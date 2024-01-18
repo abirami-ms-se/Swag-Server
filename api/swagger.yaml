@@ -1,0 +1,207 @@
+openapi: 3.0.1
+info:
+  title: Schneider Charge PCM API
+  description: This is the local API used for PCM by Wiser Hub to control Schneider
+    Charge
+  version: 1.2.3
+externalDocs:
+  description: See architecture documentation for complementary information
+  url: https://confluence.se.com/x/dKBDCQ
+servers:
+- url: https://SchneiderChargeSNXXXXXXXXXXXX.local:443
+tags:
+- name: Login
+  description: Operation related to login
+- name: PCM
+  description: Operation related to PCM logic
+paths:
+  /evse/v1/PCM/login/login:
+    post:
+      tags:
+      - Login
+      summary: Get acess token
+      description: This operation is used to get a bearer token to use for other operation
+        calls
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/userpassword'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/accessToken'
+              examples:
+                Simple Token:
+                  value:
+                    token: testtoken
+                Base64 Token:
+                  value:
+                    token: bXlhd2Vzb21ldG9rZW4=
+        "401":
+          description: Unauthorized. user/login invalid
+        "403":
+          description: Forbidden. Authentication impossible during a specific time
+            after several errors on pin code.
+  /evse/v1/PCM/electricalSettings:
+    get:
+      tags:
+      - PCM
+      summary: Get information about electrical settings
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ElectricalSettings'
+        "401":
+          description: Unauthorized. Access token is missing or invalid
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+  /evse/v1/PCM/status:
+    get:
+      tags:
+      - PCM
+      summary: Get information about instantaneous current per phases
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Current'
+        "401":
+          description: Unauthorized. Access token is missing or invalid
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+  /evse/v1/PCM/setpoint:
+    get:
+      tags:
+      - PCM
+      summary: Get information about PCM setpoint
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Setpoint'
+        "401":
+          description: Unauthorized. Access token is missing or invalid
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+    post:
+      tags:
+      - PCM
+      summary: Set information about PCM setpoint
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Setpoint'
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized. Access token is missing or invalid
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+components:
+  schemas:
+    userpassword:
+      required:
+      - password
+      - username
+      type: object
+      properties:
+        username:
+          maxLength: 10
+          type: string
+        password:
+          maxLength: 16
+          minLength: 10
+          type: string
+          format: password
+      additionalProperties: false
+      example:
+        username: wiser_hub
+        password: ""
+    accessToken:
+      type: object
+      properties:
+        token:
+          type: string
+      example:
+        token: Acfdsfvbfd.aDDsadwq3cf.Ddewqed
+    ElectricalSettings:
+      required:
+      - iMaxInstallation
+      - iMaxUser
+      type: object
+      properties:
+        iMaxInstallation:
+          maximum: 32
+          minimum: 10
+          type: integer
+          description: max current in Ampere
+        iMaxUser:
+          maximum: 32
+          minimum: 10
+          type: integer
+          description: User set max current in Ampere. Can not be greater than iMaxInstallation
+            value
+      example:
+        iMaxInstallation: 30
+        iMaxUser: 20
+    Current:
+      required:
+      - current
+      type: object
+      properties:
+        current:
+          maximum: 80
+          minimum: 0
+          type: number
+      example:
+        currentPhase1: 13.6
+        currentPhase2: 13.5
+        currentPhase3: 13.7
+    Setpoint:
+      required:
+      - setpoint
+      type: object
+      properties:
+        setpoint:
+          maximum: 32
+          minimum: 0
+          type: number
+      example:
+        current: 18.2
+  responses:
+    Ok:
+      description: Ok.
+    BadRequest:
+      description: Bad Request.
+    UnauthorizedError:
+      description: Unauthorized. Access token is missing or invalid
+    Error:
+      description: Internal Server Error
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      x-bearerInfoFunc: auth.read_token
